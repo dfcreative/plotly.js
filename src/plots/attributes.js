@@ -8,6 +8,7 @@
 
 'use strict';
 
+var fxAttrs = require('../components/fx/attributes');
 
 module.exports = {
     type: {
@@ -73,6 +74,7 @@ module.exports = {
         role: 'info',
         flags: ['x', 'y', 'z', 'text', 'name'],
         extras: ['all', 'none', 'skip'],
+        arrayOk: true,
         dflt: 'all',
         description: [
             'Determines which trace information appear on hover.',
@@ -80,6 +82,7 @@ module.exports = {
             'But, if `none` is set, click and hover events are still fired.'
         ].join(' ')
     },
+    hoverlabel: fxAttrs.hoverlabel,
     stream: {
         token: {
             valType: 'string',

@@ -1,6 +1,7 @@
 var Plotly = require('@lib/index');
 var Lib = require('@src/lib');
 
+var d3 = require('d3');
 var createGraphDiv = require('../assets/create_graph_div');
 var destroyGraphDiv = require('../assets/destroy_graph_div');
 var customMatchers = require('../assets/custom_matchers');
@@ -27,7 +28,7 @@ var mock3 = {
             [10, 10.625, 12.5, 15.625, 20],
             [5.625, 6.25, 8.125, 11.25, 15.625],
             [2.5, 3.125, 5, 8.125, 12.5],
-            [0.625, 1.25, 3.125, 6.25, 10.625],
+            [0.625, 1.25, 3.125, 20, 10.625],
             [0, 0.625, 2.5, 5.625, 10]
         ],
         colorscale: 'Jet',
@@ -128,6 +129,41 @@ describe('Test hover and click interactions', function() {
         expect(pt.pointNumber).toEqual(expected.pointNumber, 'point number');
     }
 
+    function assertHoverLabelStyle(sel, expected) {
+        if(sel.node() === null) {
+            expect(expected.noHoverLabel).toBe(true);
+            return;
+        }
+
+        var path = sel.select('path');
+        expect(path.style('fill')).toEqual(expected.bgColor, 'bgcolor');
+        expect(path.style('stroke')).toEqual(expected.borderColor, 'bordercolor');
+
+        var text = sel.select('text.nums');
+        expect(parseInt(text.style('font-size'))).toEqual(expected.fontSize, 'font.size');
+        expect(text.style('font-family').split(',')[0]).toEqual(expected.fontFamily, 'font.family');
+        expect(text.style('fill')).toEqual(expected.fontColor, 'font.color');
+    }
+
+    function assertHoveLabelContent(expected) {
+        var label = expected.label;
+
+        if(label === undefined) return;
+
+        var g = d3.select('.hovertext');
+
+        if(label === null) {
+            expect(g.size()).toBe(0);
+        } else {
+            var lines = g.selectAll('text.nums');
+
+            expect(lines.size()).toBe(label.length);
+            lines.each(function(_, i) {
+                expect(d3.select(this).text()).toEqual(label[i]);
+            });
+        }
+    }
+
     // returns basic hover/click/unhover runner for one xy position
     function makeRunner(pos, expected, opts) {
         opts = opts || {};
@@ -144,6 +180,8 @@ describe('Test hover and click interactions', function() {
                 .then(_hover)
                 .then(function(eventData) {
                     assertEventData(eventData, expected);
+                    assertHoverLabelStyle(d3.select('g.hovertext'), expected);
+                    assertHoveLabelContent(expected);
                 })
                 .then(_click)
                 .then(function(eventData) {
@@ -171,11 +209,30 @@ describe('Test hover and click interactions', function() {
 
     it('should output correct event data for scattergl', function(done) {
         var _mock = Lib.extendDeep({}, mock1);
+
+        _mock.layout.hoverlabel = {
+            font: {
+                size: 20,
+                color: 'yellow'
+            }
+        };
+        _mock.data[0].hoverinfo = _mock.data[0].x.map(function(_, i) { return i % 2 ? 'y' : 'x'; });
+        _mock.data[0].hoverlabel = {
+            bgcolor: 'blue',
+            bordercolor: _mock.data[0].x.map(function(_, i) { return i % 2 ? 'red' : 'green'; })
+        };
+
         var run = makeRunner([655, 317], {
             x: 15.772,
             y: 0.387,
+            label: ['0.387'],
             curveNumber: 0,
-            pointNumber: 33
+            pointNumber: 33,
+            bgColor: 'rgb(0, 0, 255)',
+            borderColor: 'rgb(255, 0, 0)',
+            fontSize: 20,
+            fontFamily: 'Arial',
+            fontColor: 'rgb(255, 255, 0)'
         });
 
         Plotly.plot(gd, _mock)
@@ -192,7 +249,8 @@ describe('Test hover and click interactions', function() {
             x: 15.772,
             y: 0.387,
             curveNumber: 0,
-            pointNumber: 33
+            pointNumber: 33,
+            noHoverLabel: true
         });
 
         Plotly.plot(gd, _mock)
@@ -204,11 +262,21 @@ describe('Test hover and click interactions', function() {
     it('should output correct event data for pointcloud', function(done) {
         var _mock = Lib.extendDeep({}, mock2);
 
+        _mock.layout.hoverlabel = { font: {size: 8} };
+        _mock.data[2].hoverlabel = {
+            bgcolor: ['red', 'green', 'blue']
+        };
+
         var run = makeRunner([540, 150], {
             x: 4.5,
             y: 9,
             curveNumber: 2,
-            pointNumber: 1
+            pointNumber: 1,
+            bgColor: 'rgb(0, 128, 0)',
+            borderColor: 'rgb(255, 255, 255)',
+            fontSize: 8,
+            fontFamily: 'Arial',
+            fontColor: 'rgb(255, 255, 255)'
         });
 
         Plotly.plot(gd, _mock)
@@ -221,11 +289,24 @@ describe('Test hover and click interactions', function() {
         var _mock = Lib.extendDeep({}, mock3);
         _mock.data[0].type = 'heatmapgl';
 
+        _mock.data[0].hoverlabel = {
+            font: { size: _mock.data[0].z }
+        };
+
+        _mock.layout.hoverlabel = {
+            font: { family: 'Roboto' }
+        };
+
         var run = makeRunner([540, 150], {
             x: 3,
             y: 3,
             curveNumber: 0,
-            pointNumber: [3, 3]
+            pointNumber: [3, 3],
+            bgColor: 'rgb(68, 68, 68)',
+            borderColor: 'rgb(255, 255, 255)',
+            fontSize: 20,
+            fontFamily: 'Roboto',
+            fontColor: 'rgb(255, 255, 255)'
         }, {
             noUnHover: true
         });
@@ -243,7 +324,12 @@ describe('Test hover and click interactions', function() {
             x: 8,
             y: 18,
             curveNumber: 2,
-            pointNumber: 0
+            pointNumber: 0,
+            bgColor: 'rgb(44, 160, 44)',
+            borderColor: 'rgb(255, 255, 255)',
+            fontSize: 13,
+            fontFamily: 'Arial',
+            fontColor: 'rgb(255, 255, 255)'
         });
 
         // after the restyle, autorange changes the y range
@@ -251,7 +337,12 @@ describe('Test hover and click interactions', function() {
             x: 8,
             y: 18,
             curveNumber: 2,
-            pointNumber: 0
+            pointNumber: 0,
+            bgColor: 'rgb(255, 127, 14)',
+            borderColor: 'rgb(68, 68, 68)',
+            fontSize: 13,
+            fontFamily: 'Arial',
+            fontColor: 'rgb(68, 68, 68)'
         });
 
         Plotly.plot(gd, _mock)
@@ -274,7 +365,12 @@ describe('Test hover and click interactions', function() {
             x: 8,
             y: 18,
             curveNumber: 2,
-            pointNumber: 0
+            pointNumber: 0,
+            bgColor: 'rgb(44, 160, 44)',
+            borderColor: 'rgb(255, 255, 255)',
+            fontSize: 13,
+            fontFamily: 'Arial',
+            fontColor: 'rgb(255, 255, 255)'
         });
 
         // after the restyle, autorange changes the x AND y ranges
@@ -285,7 +381,12 @@ describe('Test hover and click interactions', function() {
             x: 8,
             y: 18,
             curveNumber: 2,
-            pointNumber: 0
+            pointNumber: 0,
+            bgColor: 'rgb(255, 127, 14)',
+            borderColor: 'rgb(68, 68, 68)',
+            fontSize: 13,
+            fontFamily: 'Arial',
+            fontColor: 'rgb(68, 68, 68)'
         });
 
         Plotly.plot(gd, _mock)
@@ -301,11 +402,20 @@ describe('Test hover and click interactions', function() {
     it('should output correct event data contourgl', function(done) {
         var _mock = Lib.extendDeep({}, mock3);
 
+        _mock.data[0].hoverlabel = {
+            font: { size: _mock.data[0].z }
+        };
+
         var run = makeRunner([540, 150], {
             x: 3,
             y: 3,
             curveNumber: 0,
-            pointNumber: [3, 3]
+            pointNumber: [3, 3],
+            bgColor: 'rgb(68, 68, 68)',
+            borderColor: 'rgb(255, 255, 255)',
+            fontSize: 20,
+            fontFamily: 'Arial',
+            fontColor: 'rgb(255, 255, 255)'
         }, {
             noUnHover: true
         });
