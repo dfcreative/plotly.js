@@ -737,6 +737,7 @@ proto.expandAxesFast = function(bounds, markerSize) {
         max = ax._max;
         if(!max) max = [];
         max.push({ val: bounds[i + 2], pad: pad });
+        // console.log(min, max)
     }
 };
 
